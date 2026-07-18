@@ -1,14 +1,26 @@
+// Composition root. Assembles the app: init DB, wire middleware, mount routes,
+// register the centralized error handler, start the server. No business logic.
 const express = require('express');
-const AppManager = require('./AppManager');
-const { config } = require('./utils');
+const { config } = require('./config');
+const { initDb } = require('./db/connection');
+const routes = require('./routes');
+const errorHandler = require('./middlewares/errorHandler');
+const logger = require('./utils/logger');
 
-const app = express();
-app.use(express.json());
+async function main() {
+    await initDb();
 
-const manager = new AppManager();
-manager.initDb();
-manager.setupRoutes(app);
+    const app = express();
+    app.use(express.json());
+    app.use(routes);
+    app.use(errorHandler); // must be last
 
-app.listen(config.port, () => {
-    console.log(`Frankenstein LMS rodando na porta ${config.port}...`);
+    app.listen(config.port, () => {
+        logger.info(`LMS API rodando na porta ${config.port}...`);
+    });
+}
+
+main().catch((err) => {
+    logger.error('Falha ao iniciar a aplicação:', err);
+    process.exit(1);
 });
